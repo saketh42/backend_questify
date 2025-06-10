@@ -128,4 +128,99 @@ router.put('/:username/tasks/:taskId/complete', async (req, res) => {
   }
 });
 
+// Delete a task
+router.delete('/:username/tasks/:taskId', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const taskIndex = user.currentTasks.findIndex(
+      task => task._id.toString() === req.params.taskId
+    );
+    
+    if (taskIndex === -1) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Remove the task from the array
+    user.currentTasks.splice(taskIndex, 1);
+    await user.save();
+    
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Edit a task
+router.put('/:username/tasks/:taskId', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const task = user.currentTasks.id(req.params.taskId);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Update task properties
+    if (req.body.title) task.title = req.body.title;
+    if (req.body.description) task.description = req.body.description;
+    
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update user profile
+router.put('/:username/profile', async (req, res) => {
+  try {
+    const { currentPassword, newUsername, newPassword } = req.body;
+    
+    // Find the user
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    
+    // Update username if provided
+    if (newUsername && newUsername !== user.username) {
+      // Check if new username is already taken
+      const existingUser = await User.findOne({ username: newUsername });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Username is already taken' });
+      }
+      
+      user.username = newUsername;
+    }
+    
+    // Update password if provided
+    if (newPassword) {
+      if (newPassword.length < 4) {
+        return res.status(400).json({ error: 'Password must be at least 4 characters' });
+      }
+      
+      user.password = newPassword;
+    }
+    
+    await user.save();
+    
+    // Return user without password
+    const userObject = user.toObject();
+    delete userObject.password;
+    
+    res.json(userObject);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

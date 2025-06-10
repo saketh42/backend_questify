@@ -9,8 +9,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use('/api/users', require('./routers/users'));
+// Import routes
+const userRoutes = require('./routers/users');
+const dailyTaskRoutes = require('./routers/dailyTasks');
+const geminiRoutes = require('./routers/gemini');
+
+// Use routes
+app.use('/api/users', userRoutes);
+app.use('/api/dailyTasks', dailyTaskRoutes);
+app.use('/api/gemini', geminiRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/questify', {
